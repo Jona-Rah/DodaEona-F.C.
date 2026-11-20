@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>DodaEona F.C. – Official Football Club, Match Simulator & Book Library</title>
+    <meta name="description" content="Official DodaEona F.C. website. Explore football match simulation, online football simulators, career mode, team databases, complete football literature, book series, and interactive football experiences." />
+    <meta name="keywords" content="DodaEona F.C., DodaEona Football, DodaEona Official Website, Football Match Simulator, Online Football Simulator, Football Competition Simulator, Football Career Mode, Football Education, Football Reading Website, Football Quiz and Activities" />
+    <link rel="canonical" href="https://dodaeona-fc-official-website.ai.studio" />
+
+    <!-- OpenGraph Social Share Cards -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DodaEona F.C." />
+    <meta property="og:url" content="https://dodaeona-fc-official-website.ai.studio" />
+    <meta property="og:title" content="DodaEona F.C. – Official Football Club, Match Simulator & Book Library" />
+    <meta property="og:description" content="Official DodaEona F.C. website. Explore football match simulation, online football simulators, career mode, team databases, complete football literature, and book series." />
+    <meta property="og:image" content="https://dodaeona-fc-official-website.ai.studio/pwa-512x512.png" />
+
+    <!-- Twitter / X Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DodaEona F.C. – Official Football Club, Match Simulator & Book Library" />
+    <meta name="twitter:description" content="Official DodaEona F.C. website. Explore football match simulation, online football simulators, team databases, and complete football literature." />
+    <meta name="twitter:image" content="https://dodaeona-fc-official-website.ai.studio/pwa-512x512.png" />
+
+    <!-- Schema.org JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "DodaEona F.C.",
+      "url": "https://dodaeona-fc-official-website.ai.studio",
+      "logo": "https://dodaeona-fc-official-website.ai.studio/icon.svg",
+      "sameAs": [],
+      "description": "Official DodaEona F.C. football platform combining match simulation, team databases, competitions, and football educational reading series."
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "DodaEona F.C.",
+      "url": "https://dodaeona-fc-official-website.ai.studio",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://dodaeona-fc-official-website.ai.studio/library?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "DodaEona F.C. Match & Library Platform",
+      "applicationCategory": "SportsApplication",
+      "operatingSystem": "All",
+      "url": "https://dodaeona-fc-official-website.ai.studio",
+      "description": "Advanced football match simulator, team directory, and digital book library.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+    
+    <!-- PWA & Mobile Web App Meta -->
+    <meta name="theme-color" content="#F4F7FA" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="DodaEona FC" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    
+    <!-- Pre-render theme initialization script & HMR error filter -->
+    <script>
+      (function() {
+        // Suppress expected HMR WebSocket errors in AI Studio iframe environment (HMR is disabled by design)
+        var _origConsoleError = console.error;
+        console.error = function() {
+          var first = arguments[0];
+          if (
+            typeof first === 'string' &&
+            (first.indexOf('[vite]') !== -1 ||
+             first.indexOf('WebSocket') !== -1 ||
+             first.indexOf('vite-hmr') !== -1)
+          ) {
+            return;
+          }
+          if (arguments[1] && typeof arguments[1].message === 'string' && arguments[1].message.indexOf('WebSocket') !== -1) {
+            return;
+          }
+          return _origConsoleError.apply(console, arguments);
+        };
+
+        var OrigWS = window.WebSocket;
+        if (OrigWS) {
+          window.WebSocket = function(url, protocols) {
+            var urlStr = String(url || '');
+            var protoStr = Array.isArray(protocols) ? protocols.join(',') : String(protocols || '');
+            if (
+              protoStr.indexOf('vite') !== -1 ||
+              urlStr.indexOf('vite-hmr') !== -1 ||
+              urlStr.indexOf('@vite') !== -1
+            ) {
+              var stub = new EventTarget();
+              stub.readyState = 1; // WebSocket.OPEN
+              stub.url = urlStr;
+              stub.protocol = 'vite-hmr';
+              stub.send = function() {};
+              stub.close = function() {};
+              return stub;
+            }
+            return new OrigWS(url, protocols);
+          };
+          window.WebSocket.prototype = OrigWS.prototype;
+          window.WebSocket.CONNECTING = 0;
+          window.WebSocket.OPEN = 1;
+          window.WebSocket.CLOSING = 2;
+          window.WebSocket.CLOSED = 3;
+        }
+
+        window.addEventListener('unhandledrejection', function(event) {
+          if (
+            event &&
+            event.reason &&
+            typeof event.reason.message === 'string' &&
+            event.reason.message.includes('WebSocket')
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        });
+        window.addEventListener('error', function(event) {
+          if (
+            event &&
+            (
+              (typeof event.message === 'string' && event.message.includes('WebSocket')) ||
+              (typeof event.filename === 'string' && event.filename.includes('@vite/client'))
+            )
+          ) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        });
+
+        try {
+          var saved = localStorage.getItem('dodaeona_theme');
+          if (saved === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch(e) {}
+      })();
+    </script>
+
+    <!-- Google Fonts: Anton (Display), Plus Jakarta Sans (Body/UI), JetBrains Mono (Eyebrows & Telemetry) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400&family=Plus+Jakarta+Sans:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased selection:bg-[#7ADBF0] selection:text-[#050A12] font-sans transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

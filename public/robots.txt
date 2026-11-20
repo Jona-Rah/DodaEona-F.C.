@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /login
+Disallow: /my-library
+Disallow: /api/admin
+
+Sitemap: https://dodaeona-fc-official-website.ai.studio/sitemap.xml

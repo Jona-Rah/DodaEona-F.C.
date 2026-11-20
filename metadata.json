@@ -1,0 +1,8 @@
+{
+  "name": "DodaEona F.C. Official Website",
+  "description": "Official DodaEona F.C. website: football match simulation, online football simulators, team databases, complete football literature, and book series.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,1053 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user identity and display profile for DodaEona F.C.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Member display name",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "role": {
+          "type": "string",
+          "description": "Role assigned to the account",
+          "enum": ["member", "admin"],
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["uid", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Split-collection isolated PII record for an authenticated user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified account email address",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "UserPersonalLibraryDoc": {
+      "title": "UserPersonalLibraryDoc",
+      "description": "Saved books, bookmarks, and reading progress for an authenticated reader.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "savedBookIds": {
+          "type": "array",
+          "description": "Saved book volume IDs"
+        },
+        "bookmarks": {
+          "type": "array",
+          "description": "Saved reader bookmarks"
+        },
+        "progress": {
+          "type": "object",
+          "description": "Per-book reading progress map"
+        },
+        "recentBookIds": {
+          "type": "array",
+          "description": "Recently opened book volume IDs"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["uid", "savedBookIds", "bookmarks", "progress", "recentBookIds", "updatedAt"]
+    },
+    "AdminGrant": {
+      "title": "AdminGrant",
+      "description": "Trusted administrator grant document used by Firestore rules.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Administrator Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified administrator email address",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "grantedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server grant timestamp"
+        }
+      },
+      "required": ["uid", "email", "grantedAt"]
+    },
+    "SiteConfigDoc": {
+      "title": "SiteConfigDoc",
+      "description": "Permanent admin-managed website configuration record (branding, homepage, about/legal, contact, music, deleted IDs, squad overrides).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Configuration key identifier",
+          "enum": [
+            "branding",
+            "homepage_config",
+            "about_legal",
+            "contact_info",
+            "music_tracks",
+            "deleted_entities",
+            "squad_overrides",
+            "competition_trophies",
+            "hall_of_fame",
+            "blox_fruits_state"
+          ],
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "status": {
+          "type": "string",
+          "description": "Publication visibility status",
+          "enum": ["published", "draft"],
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "payload": {
+          "type": "object",
+          "description": "Native Firestore map storing structured configuration properties"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Actor UID or email who last modified the document",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "status", "payload", "updatedBy", "updatedAt"]
+    },
+    "ReadingSeriesDoc": {
+      "title": "ReadingSeriesDoc",
+      "description": "Permanent reading series publication record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Series ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Series title",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Whether the series is publicly visible"
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Whether the series is featured on the homepage"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Full ReadingSeriesItem native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "title", "published", "featured", "payload", "updatedBy", "updatedAt"]
+    },
+    "BookVolumeDoc": {
+      "title": "BookVolumeDoc",
+      "description": "Permanent book volume publication record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Book volume ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "seriesId": {
+          "type": "string",
+          "description": "Parent series ID",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "description": "Volume title",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Whether the book volume is publicly visible"
+        },
+        "downloadEnabled": {
+          "type": "boolean",
+          "description": "Whether PDF downloads are enabled"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Full BookVolume native map including chapters and metadata"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "seriesId", "title", "published", "downloadEnabled", "payload", "updatedBy", "updatedAt"]
+    },
+    "PdfFileDoc": {
+      "title": "PdfFileDoc",
+      "description": "Permanent PDF edition metadata record with public or admin-only access gate.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "PDF record ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "bookId": {
+          "type": "string",
+          "description": "Linked book volume ID",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "filename": {
+          "type": "string",
+          "description": "Sanitized PDF filename",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "accessStatus": {
+          "type": "string",
+          "description": "PDF visibility access policy",
+          "enum": ["public", "private"],
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "chunkCount": {
+          "type": "number",
+          "description": "Number of stored binary chunks under chunks subcollection"
+        },
+        "payload": {
+          "type": "object",
+          "description": "PdfFileRecord metadata map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "bookId", "filename", "accessStatus", "chunkCount", "payload", "updatedBy", "updatedAt"]
+    },
+    "PdfChunkDoc": {
+      "title": "PdfChunkDoc",
+      "description": "Base64 chunk of an uploaded persistent PDF file.",
+      "type": "object",
+      "properties": {
+        "pdfId": {
+          "type": "string",
+          "description": "Parent PDF document ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "index": {
+          "type": "number",
+          "description": "Zero-based chunk index"
+        },
+        "data": {
+          "type": "string",
+          "description": "Base64 payload slice (<= 500KB)",
+          "minLength": 1,
+          "maxLength": 550000
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["pdfId", "index", "data", "updatedAt"]
+    },
+    "AnnouncementDoc": {
+      "title": "AnnouncementDoc",
+      "description": "Permanent club announcement or What's New update record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Announcement ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "status": {
+          "type": "string",
+          "description": "Announcement publication status",
+          "enum": ["draft", "hidden", "published", "archived"],
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "payload": {
+          "type": "object",
+          "description": "ManagedAnnouncement native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "status", "payload", "updatedBy", "updatedAt"]
+    },
+    "MediaAssetDoc": {
+      "title": "MediaAssetDoc",
+      "description": "Permanent media library asset entry.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Media asset ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Asset display label",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "payload": {
+          "type": "object",
+          "description": "MediaAsset native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "name", "payload", "updatedBy", "updatedAt"]
+    },
+    "TeamDoc": {
+      "title": "TeamDoc",
+      "description": "Permanent custom team or built-in team override record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Canonical team ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Team name",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "team_type": {
+          "type": "string",
+          "description": "Club or national team discriminator",
+          "enum": ["club", "country"],
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "payload": {
+          "type": "object",
+          "description": "Full Team native map including squad, tactics, penalty order, and crest"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "name", "team_type", "payload", "updatedBy", "updatedAt"]
+    },
+    "PlayerIdentityDoc": {
+      "title": "PlayerIdentityDoc",
+      "description": "Permanent admin-created or edited canonical player identity override.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Canonical player identity ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "payload": {
+          "type": "object",
+          "description": "PlayerIdentity override fields native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "payload", "updatedBy", "updatedAt"]
+    },
+    "PlayerRegistrationDoc": {
+      "title": "PlayerRegistrationDoc",
+      "description": "Permanent club or national player registration record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Registration ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "team_type": {
+          "type": "string",
+          "description": "Club or country registration scope",
+          "enum": ["club", "country"],
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "playerId": {
+          "type": "string",
+          "description": "Linked player identity ID",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "payload": {
+          "type": "object",
+          "description": "PlayerClubRegistration or PlayerNationalRegistration native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "team_type", "playerId", "payload", "updatedBy", "updatedAt"]
+    },
+    "FreeAgentDoc": {
+      "title": "FreeAgentDoc",
+      "description": "Permanent custom free agent delta record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Free agent ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "payload": {
+          "type": "object",
+          "description": "FreeAgentPlayer native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "payload", "updatedBy", "updatedAt"]
+    },
+    "ManagerDoc": {
+      "title": "ManagerDoc",
+      "description": "Permanent admin-created or edited football manager record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Manager ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Manager full name",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Whether manager record is admin-verified"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Full Manager native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Creator or admin UID/email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "name", "verified", "payload", "updatedBy", "updatedAt"]
+    },
+    "ManagerAppointmentDoc": {
+      "title": "ManagerAppointmentDoc",
+      "description": "Permanent manager appointment or career spell delta record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Appointment ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "manager_id": {
+          "type": "string",
+          "description": "Manager ID",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "team_id": {
+          "type": "string",
+          "description": "Team ID",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "is_current": {
+          "type": "boolean",
+          "description": "Whether this appointment is currently active"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Full ManagerAppointment native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "manager_id", "team_id", "is_current", "payload", "updatedBy", "updatedAt"]
+    },
+    "CompetitionDoc": {
+      "title": "CompetitionDoc",
+      "description": "Permanent competition standings and fixtures record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Competition ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "status": {
+          "type": "string",
+          "description": "Competition lifecycle stage",
+          "enum": ["import", "staged", "verified", "published"],
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "payload": {
+          "type": "object",
+          "description": "CompetitionRecord native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "status", "payload", "updatedBy", "updatedAt"]
+    },
+    "CompetitionMakerDoc": {
+      "title": "CompetitionMakerDoc",
+      "description": "Permanent Competition Maker tournament containing stages, draws, fixtures, standings, and trophy data.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Competition Maker tournament ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Creator UID or identifier",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "status": {
+          "type": "string",
+          "description": "Tournament progress status",
+          "enum": ["setup", "in-progress", "completed"],
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "presetId": {
+          "type": "string",
+          "description": "Tournament format preset ID",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "payload": {
+          "type": "object",
+          "description": "Full CompetitionMakerTournament native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Actor UID or identifier",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "createdBy", "status", "presetId", "payload", "updatedBy", "updatedAt"]
+    },
+    "LeagueStatusDoc": {
+      "title": "LeagueStatusDoc",
+      "description": "Permanent league lifecycle verification record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "League status ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "stage": {
+          "type": "string",
+          "description": "Verification stage",
+          "enum": ["import", "staged", "verified", "published"],
+          "minLength": 1,
+          "maxLength": 16
+        },
+        "payload": {
+          "type": "object",
+          "description": "LeagueStatusRecord native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "stage", "payload", "updatedBy", "updatedAt"]
+    },
+    "MatchRecordDoc": {
+      "title": "MatchRecordDoc",
+      "description": "Permanent saved simulation or scoreboard match record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Match record ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Creator UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "payload": {
+          "type": "object",
+          "description": "SimulationMatchRecord or ScoreboardMatchRecord native map"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "createdBy", "payload", "updatedAt"]
+    },
+    "QuizQuestionDoc": {
+      "title": "QuizQuestionDoc",
+      "description": "Permanent admin-managed football quiz question.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Quiz question ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "payload": {
+          "type": "object",
+          "description": "QuizQuestionRecord native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "payload", "updatedBy", "updatedAt"]
+    },
+    "ReaderObjectiveDoc": {
+      "title": "ReaderObjectiveDoc",
+      "description": "Permanent admin-managed reader objective.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Objective ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether objective is active"
+        },
+        "payload": {
+          "type": "object",
+          "description": "ReaderObjectiveRecord native map"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Admin UID or email",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "active", "payload", "updatedBy", "updatedAt"]
+    },
+    "NewsletterSubscriberDoc": {
+      "title": "NewsletterSubscriberDoc",
+      "description": "Admin-isolated newsletter subscriber PII record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Subscriber ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Subscriber email address",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "subscribedAt": {
+          "type": "string",
+          "description": "ISO subscription timestamp",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "email", "subscribedAt", "updatedAt"]
+    },
+    "AuditLogDoc": {
+      "title": "AuditLogDoc",
+      "description": "Admin-only persistent audit trail entry.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Audit log ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "actorEmail": {
+          "type": "string",
+          "description": "Admin email",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "payload": {
+          "type": "object",
+          "description": "AuditLogEntry native map"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": ["id", "actorEmail", "payload", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Core user profile keyed by Firebase Auth UID"
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Isolated PII subcollection storing user email"
+    },
+    "/users/{userId}/library/{docId}": {
+      "schema": { "$ref": "#/entities/UserPersonalLibraryDoc" },
+      "description": "Per-user persistent saved books, bookmarks, and reading progress"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminGrant" },
+      "description": "Trusted admin lookup documents"
+    },
+    "/site_config/{configId}": {
+      "schema": { "$ref": "#/entities/SiteConfigDoc" },
+      "description": "Permanent site-wide configurations (branding, homepage, about/legal, contact, music, deleted entity IDs, squad overrides)"
+    },
+    "/reading_series/{seriesId}": {
+      "schema": { "$ref": "#/entities/ReadingSeriesDoc" },
+      "description": "Permanent admin-published or edited reading series"
+    },
+    "/book_volumes/{bookId}": {
+      "schema": { "$ref": "#/entities/BookVolumeDoc" },
+      "description": "Permanent admin-published or edited book volumes"
+    },
+    "/pdf_files/{pdfId}": {
+      "schema": { "$ref": "#/entities/PdfFileDoc" },
+      "description": "Permanent PDF file metadata and access policies"
+    },
+    "/pdf_files/{pdfId}/chunks/{chunkId}": {
+      "schema": { "$ref": "#/entities/PdfChunkDoc" },
+      "description": "Base64 data chunks for uploaded PDF files"
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "#/entities/AnnouncementDoc" },
+      "description": "Permanent admin announcements and What's New updates"
+    },
+    "/media_assets/{assetId}": {
+      "schema": { "$ref": "#/entities/MediaAssetDoc" },
+      "description": "Permanent media library asset entries"
+    },
+    "/custom_teams/{teamId}": {
+      "schema": { "$ref": "#/entities/TeamDoc" },
+      "description": "Permanent admin-created custom club and national teams"
+    },
+    "/team_overrides/{teamId}": {
+      "schema": { "$ref": "#/entities/TeamDoc" },
+      "description": "Permanent admin modifications to built-in club and national teams"
+    },
+    "/player_identities/{playerId}": {
+      "schema": { "$ref": "#/entities/PlayerIdentityDoc" },
+      "description": "Permanent admin-created or edited player identity overrides"
+    },
+    "/player_registrations/{regId}": {
+      "schema": { "$ref": "#/entities/PlayerRegistrationDoc" },
+      "description": "Permanent club and national team player registration and transfer deltas"
+    },
+    "/free_agents/{agentId}": {
+      "schema": { "$ref": "#/entities/FreeAgentDoc" },
+      "description": "Permanent custom free agent records"
+    },
+    "/manager_records/{managerId}": {
+      "schema": { "$ref": "#/entities/ManagerDoc" },
+      "description": "Permanent admin-created or modified manager records"
+    },
+    "/manager_appointments/{appointmentId}": {
+      "schema": { "$ref": "#/entities/ManagerAppointmentDoc" },
+      "description": "Permanent manager appointment and career spell modifications"
+    },
+    "/competitions/{competitionId}": {
+      "schema": { "$ref": "#/entities/CompetitionDoc" },
+      "description": "Permanent competitions, standings, and fixtures"
+    },
+    "/competition_maker/{competitionId}": {
+      "schema": { "$ref": "#/entities/CompetitionMakerDoc" },
+      "description": "Permanent custom & preset tournaments created in Competition Maker"
+    },
+    "/league_statuses/{leagueId}": {
+      "schema": { "$ref": "#/entities/LeagueStatusDoc" },
+      "description": "Permanent league lifecycle verification records"
+    },
+    "/simulation_matches/{matchId}": {
+      "schema": { "$ref": "#/entities/MatchRecordDoc" },
+      "description": "Permanent saved simulation matches"
+    },
+    "/scoreboard_matches/{matchId}": {
+      "schema": { "$ref": "#/entities/MatchRecordDoc" },
+      "description": "Permanent saved ScoreBoard matches"
+    },
+    "/quiz_questions/{questionId}": {
+      "schema": { "$ref": "#/entities/QuizQuestionDoc" },
+      "description": "Permanent football quiz questions"
+    },
+    "/reader_objectives/{objectiveId}": {
+      "schema": { "$ref": "#/entities/ReaderObjectiveDoc" },
+      "description": "Permanent reader objectives"
+    },
+    "/newsletter_subscribers/{subId}": {
+      "schema": { "$ref": "#/entities/NewsletterSubscriberDoc" },
+      "description": "Admin-isolated newsletter subscriber emails"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLogDoc" },
+      "description": "Admin-only audit trail entries"
+    }
+  }
+}

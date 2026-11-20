@@ -1,0 +1,1033 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny catch-all rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Primitive Helpers
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedAdminEmail() {
+      return isVerifiedUser()
+        && request.auth.token.email is string
+        && (
+          request.auth.token.email.lower() == 'jonathan.elraheb@gmail.com'
+          || request.auth.token.email.lower() == 'david.emanoueel.gr7@gmail.com'
+          || request.auth.token.email.lower() == 'admin@dodaeona.fc'
+          || request.auth.token.email.lower() == 'malak.marian1984@gmail.com'
+        );
+    }
+
+    function isAdmin() {
+      return isVerifiedUser()
+        && (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          || isBootstrappedAdminEmail()
+        );
+    }
+
+    function isValidActorMeta(data) {
+      return data.updatedBy is string
+        && data.updatedBy.size() >= 1
+        && data.updatedBy.size() <= 128
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Entity Validation Blueprints
+    // =========================================================================
+    function isValidUserProfile(data, expectedUid) {
+      return data.keys().hasAll(['uid', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == expectedUid
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 80
+        && data.role is string
+        && data.role.size() >= 1
+        && data.role.size() <= 16
+        && data.role in ['member', 'admin']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivateInfo(data, expectedUid) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == expectedUid
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 254
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserPersonalLibrary(data, expectedUid) {
+      return data.keys().hasAll(['uid', 'savedBookIds', 'bookmarks', 'progress', 'recentBookIds', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'savedBookIds', 'bookmarks', 'progress', 'recentBookIds', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == expectedUid
+        && data.savedBookIds is list
+        && data.savedBookIds.size() <= 500
+        && (data.savedBookIds.size() == 0 || data.savedBookIds[0] is string)
+        && data.bookmarks is list
+        && data.bookmarks.size() <= 1000
+        && (data.bookmarks.size() == 0 || data.bookmarks[0] is map)
+        && data.progress is map
+        && data.progress.keys().size() <= 1000
+        && data.recentBookIds is list
+        && data.recentBookIds.size() <= 50
+        && (data.recentBookIds.size() == 0 || data.recentBookIds[0] is string)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminGrant(data, expectedUid) {
+      return data.keys().hasAll(['uid', 'email', 'grantedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'grantedAt'])
+        && isValidId(data.uid)
+        && data.uid == expectedUid
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 254
+        && data.grantedAt is timestamp;
+    }
+
+    function isValidSiteConfig(data, expectedId) {
+      return data.keys().hasAll(['id', 'status', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'status', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.id in [
+          'branding',
+          'homepage_config',
+          'about_legal',
+          'contact_info',
+          'music_tracks',
+          'deleted_entities',
+          'squad_overrides',
+          'competition_trophies',
+          'hall_of_fame',
+          'blox_fruits_state'
+        ]
+        && data.status is string
+        && data.status.size() >= 1
+        && data.status.size() <= 16
+        && data.status in ['published', 'draft']
+        && data.payload is map
+        && data.payload.keys().size() <= 80
+        && isValidActorMeta(data);
+    }
+
+    function isValidReadingSeries(data, expectedId) {
+      return data.keys().hasAll(['id', 'title', 'published', 'featured', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'title', 'published', 'featured', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 240
+        && data.published is bool
+        && data.featured is bool
+        && data.payload is map
+        && data.payload.keys().size() <= 50
+        && isValidActorMeta(data);
+    }
+
+    function isValidBookVolume(data, expectedId) {
+      return data.keys().hasAll(['id', 'seriesId', 'title', 'published', 'downloadEnabled', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'seriesId', 'title', 'published', 'downloadEnabled', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.seriesId is string
+        && data.seriesId.size() >= 1
+        && data.seriesId.size() <= 128
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 240
+        && data.published is bool
+        && data.downloadEnabled is bool
+        && data.payload is map
+        && data.payload.keys().size() <= 60
+        && isValidActorMeta(data);
+    }
+
+    function isValidPdfFile(data, expectedId) {
+      return data.keys().hasAll(['id', 'bookId', 'filename', 'accessStatus', 'chunkCount', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'bookId', 'filename', 'accessStatus', 'chunkCount', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.bookId is string
+        && data.bookId.size() >= 1
+        && data.bookId.size() <= 128
+        && data.filename is string
+        && data.filename.size() >= 1
+        && data.filename.size() <= 240
+        && data.accessStatus is string
+        && data.accessStatus.size() >= 1
+        && data.accessStatus.size() <= 16
+        && data.accessStatus in ['public', 'private']
+        && data.chunkCount is number
+        && data.chunkCount >= 0
+        && data.chunkCount <= 100
+        && data.payload is map
+        && data.payload.keys().size() <= 30
+        && isValidActorMeta(data);
+    }
+
+    function isValidPdfChunk(data, expectedPdfId) {
+      return data.keys().hasAll(['pdfId', 'index', 'data', 'updatedAt'])
+        && data.keys().hasOnly(['pdfId', 'index', 'data', 'updatedAt'])
+        && isValidId(data.pdfId)
+        && data.pdfId == expectedPdfId
+        && data.index is number
+        && data.index >= 0
+        && data.index < 100
+        && data.data is string
+        && data.data.size() >= 1
+        && data.data.size() <= 550000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAnnouncement(data, expectedId) {
+      return data.keys().hasAll(['id', 'status', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'status', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.status is string
+        && data.status.size() >= 1
+        && data.status.size() <= 16
+        && data.status in ['draft', 'hidden', 'published', 'archived']
+        && data.payload is map
+        && data.payload.keys().size() <= 40
+        && isValidActorMeta(data);
+    }
+
+    function isValidMediaAsset(data, expectedId) {
+      return data.keys().hasAll(['id', 'name', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 200
+        && data.payload is map
+        && data.payload.keys().size() <= 30
+        && isValidActorMeta(data);
+    }
+
+    function isValidTeamDoc(data, expectedId) {
+      return data.keys().hasAll(['id', 'name', 'team_type', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'team_type', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 160
+        && data.team_type is string
+        && data.team_type.size() >= 1
+        && data.team_type.size() <= 16
+        && data.team_type in ['club', 'country']
+        && data.payload is map
+        && data.payload.keys().size() <= 80
+        && isValidActorMeta(data);
+    }
+
+    function isValidPlayerIdentity(data, expectedId) {
+      return data.keys().hasAll(['id', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.payload is map
+        && data.payload.keys().size() <= 80
+        && isValidActorMeta(data);
+    }
+
+    function isValidPlayerRegistration(data, expectedId) {
+      return data.keys().hasAll(['id', 'team_type', 'playerId', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'team_type', 'playerId', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.team_type is string
+        && data.team_type.size() >= 1
+        && data.team_type.size() <= 16
+        && data.team_type in ['club', 'country']
+        && data.playerId is string
+        && data.playerId.size() >= 1
+        && data.playerId.size() <= 128
+        && data.payload is map
+        && data.payload.keys().size() <= 50
+        && isValidActorMeta(data);
+    }
+
+    function isValidFreeAgent(data, expectedId) {
+      return data.keys().hasAll(['id', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.payload is map
+        && data.payload.keys().size() <= 60
+        && isValidActorMeta(data);
+    }
+
+    function isValidManagerDoc(data, expectedId) {
+      return data.keys().hasAll(['id', 'name', 'verified', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'verified', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 160
+        && data.verified is bool
+        && data.payload is map
+        && data.payload.keys().size() <= 50
+        && isValidActorMeta(data);
+    }
+
+    function isValidManagerAppointment(data, expectedId) {
+      return data.keys().hasAll(['id', 'manager_id', 'team_id', 'is_current', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'manager_id', 'team_id', 'is_current', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.manager_id is string
+        && data.manager_id.size() >= 1
+        && data.manager_id.size() <= 128
+        && data.team_id is string
+        && data.team_id.size() >= 1
+        && data.team_id.size() <= 128
+        && data.is_current is bool
+        && data.payload is map
+        && data.payload.keys().size() <= 50
+        && isValidActorMeta(data);
+    }
+
+    function isValidCompetitionDoc(data, expectedId) {
+      return data.keys().hasAll(['id', 'status', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'status', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.status is string
+        && data.status.size() >= 1
+        && data.status.size() <= 16
+        && data.status in ['import', 'staged', 'verified', 'published']
+        && data.payload is map
+        && data.payload.keys().size() <= 50
+        && isValidActorMeta(data);
+    }
+
+    function isValidCompetitionMakerDoc(data, expectedId) {
+      return data.keys().hasAll(['id', 'createdBy', 'status', 'presetId', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'createdBy', 'status', 'presetId', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.createdBy is string
+        && data.createdBy.size() >= 1
+        && data.createdBy.size() <= 128
+        && data.status is string
+        && data.status.size() >= 1
+        && data.status.size() <= 20
+        && data.status in ['setup', 'in-progress', 'completed']
+        && data.presetId is string
+        && data.presetId.size() >= 1
+        && data.presetId.size() <= 32
+        && data.payload is map
+        && data.payload.keys().size() <= 40
+        && isValidActorMeta(data);
+    }
+
+    function isValidLeagueStatusDoc(data, expectedId) {
+      return data.keys().hasAll(['id', 'stage', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'stage', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.stage is string
+        && data.stage.size() >= 1
+        && data.stage.size() <= 16
+        && data.stage in ['import', 'staged', 'verified', 'published']
+        && data.payload is map
+        && data.payload.keys().size() <= 40
+        && isValidActorMeta(data);
+    }
+
+    function isValidMatchRecord(data, expectedId) {
+      return data.keys().hasAll(['id', 'createdBy', 'payload', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'createdBy', 'payload', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.createdBy is string
+        && data.createdBy.size() >= 1
+        && data.createdBy.size() <= 128
+        && data.payload is map
+        && data.payload.keys().size() <= 60
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidQuizQuestion(data, expectedId) {
+      return data.keys().hasAll(['id', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.payload is map
+        && data.payload.keys().size() <= 30
+        && isValidActorMeta(data);
+    }
+
+    function isValidReaderObjective(data, expectedId) {
+      return data.keys().hasAll(['id', 'active', 'payload', 'updatedBy', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'active', 'payload', 'updatedBy', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.active is bool
+        && data.payload is map
+        && data.payload.keys().size() <= 30
+        && isValidActorMeta(data);
+    }
+
+    function isValidNewsletterSubscriber(data, expectedId) {
+      return data.keys().hasAll(['id', 'email', 'subscribedAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'email', 'subscribedAt', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 254
+        && data.subscribedAt is string
+        && data.subscribedAt.size() >= 1
+        && data.subscribedAt.size() <= 64
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAuditLog(data, expectedId) {
+      return data.keys().hasAll(['id', 'actorEmail', 'payload', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'actorEmail', 'payload', 'updatedAt'])
+        && isValidId(data.id)
+        && data.id == expectedId
+        && data.actorEmail is string
+        && data.actorEmail.size() >= 3
+        && data.actorEmail.size() <= 254
+        && data.payload is map
+        && data.payload.keys().size() <= 20
+        && data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // User & Admin Access Collections
+    // =========================================================================
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          (isOwner(userId) && incoming().role == 'member')
+          || isAdmin()
+        );
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isOwner(userId)
+            && incoming().role == existing().role
+            && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']))
+          || (isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'updatedAt']))
+        );
+
+      allow delete: if isValidId(userId) && isAdmin();
+
+      match /private/{docId} {
+        allow get: if isValidId(userId)
+          && isValidId(docId)
+          && (isOwner(userId) || isAdmin())
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if false;
+
+        allow create: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(docId)
+          && isValidUserPrivateInfo(incoming(), userId)
+          && incoming().updatedAt == request.time
+          && (isOwner(userId) || isAdmin())
+          && (
+            exists(/databases/$(database)/documents/users/$(userId))
+            || existsAfter(/databases/$(database)/documents/users/$(userId))
+          );
+
+        allow update: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(docId)
+          && isValidUserPrivateInfo(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['email', 'updatedAt'])
+          && (isOwner(userId) || isAdmin())
+          && exists(/databases/$(database)/documents/users/$(userId));
+
+        allow delete: if isValidId(userId)
+          && isValidId(docId)
+          && isAdmin();
+      }
+
+      match /library/{docId} {
+        allow get: if isValidId(userId)
+          && isValidId(docId)
+          && (isOwner(userId) || isAdmin())
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow list: if false;
+
+        allow create: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(docId)
+          && isValidUserPersonalLibrary(incoming(), userId)
+          && incoming().updatedAt == request.time
+          && (isOwner(userId) || isAdmin())
+          && (
+            exists(/databases/$(database)/documents/users/$(userId))
+            || existsAfter(/databases/$(database)/documents/users/$(userId))
+          );
+
+        allow update: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(docId)
+          && isValidUserPersonalLibrary(incoming(), userId)
+          && incoming().uid == existing().uid
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['savedBookIds', 'bookmarks', 'progress', 'recentBookIds', 'updatedAt'])
+          && (isOwner(userId) || isAdmin())
+          && exists(/databases/$(database)/documents/users/$(userId));
+
+        allow delete: if isValidId(userId)
+          && isValidId(docId)
+          && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list: if false;
+
+      allow create: if isValidId(adminId)
+        && isAdmin()
+        && isValidAdminGrant(incoming(), adminId)
+        && incoming().grantedAt == request.time;
+
+      allow update: if isValidId(adminId)
+        && isAdmin()
+        && isValidAdminGrant(incoming(), adminId)
+        && incoming().uid == existing().uid
+        && incoming().grantedAt == existing().grantedAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['email']);
+
+      allow delete: if isValidId(adminId) && isAdmin();
+    }
+
+    // =========================================================================
+    // Permanent Website Configuration & Reads Press Collections
+    // =========================================================================
+    match /site_config/{configId} {
+      allow get: if isValidId(configId) && (existing().status == 'published' || isAdmin());
+      allow list: if existing().status == 'published' || isAdmin();
+
+      allow create: if isValidId(configId)
+        && isValidSiteConfig(incoming(), configId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(configId)
+        && isValidSiteConfig(incoming(), configId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(configId) && isAdmin();
+    }
+
+    match /reading_series/{seriesId} {
+      allow get: if isValidId(seriesId) && (existing().published == true || isAdmin());
+      allow list: if existing().published == true || isAdmin();
+
+      allow create: if isValidId(seriesId)
+        && isValidReadingSeries(incoming(), seriesId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(seriesId)
+        && isValidReadingSeries(incoming(), seriesId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'published', 'featured', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(seriesId) && isAdmin();
+    }
+
+    match /book_volumes/{bookId} {
+      allow get: if isValidId(bookId) && (existing().published == true || isAdmin());
+      allow list: if existing().published == true || isAdmin();
+
+      allow create: if isValidId(bookId)
+        && isValidBookVolume(incoming(), bookId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(bookId)
+        && isValidBookVolume(incoming(), bookId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['seriesId', 'title', 'published', 'downloadEnabled', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(bookId) && isAdmin();
+    }
+
+    match /pdf_files/{pdfId} {
+      allow get: if isValidId(pdfId) && (existing().accessStatus == 'public' || isAdmin());
+      allow list: if existing().accessStatus == 'public' || isAdmin();
+
+      allow create: if isValidId(pdfId)
+        && isValidPdfFile(incoming(), pdfId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(pdfId)
+        && isValidPdfFile(incoming(), pdfId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['bookId', 'filename', 'accessStatus', 'chunkCount', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(pdfId) && isAdmin();
+
+      match /chunks/{chunkId} {
+        allow get: if isValidId(pdfId)
+          && isValidId(chunkId)
+          && (
+            get(/databases/$(database)/documents/pdf_files/$(pdfId)).data.accessStatus == 'public'
+            || isAdmin()
+          );
+        allow list: if isValidId(pdfId) && isAdmin();
+
+        allow create: if isValidId(pdfId)
+          && isValidId(chunkId)
+          && isValidPdfChunk(incoming(), pdfId)
+          && incoming().updatedAt == request.time
+          && isAdmin()
+          && (
+            exists(/databases/$(database)/documents/pdf_files/$(pdfId))
+            || existsAfter(/databases/$(database)/documents/pdf_files/$(pdfId))
+          );
+
+        allow update: if isValidId(pdfId)
+          && isValidId(chunkId)
+          && isValidPdfChunk(incoming(), pdfId)
+          && incoming().pdfId == existing().pdfId
+          && incoming().index == existing().index
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['data', 'updatedAt'])
+          && isAdmin()
+          && exists(/databases/$(database)/documents/pdf_files/$(pdfId));
+
+        allow delete: if isValidId(pdfId) && isValidId(chunkId) && isAdmin();
+      }
+    }
+
+    match /announcements/{announcementId} {
+      allow get: if isValidId(announcementId) && (existing().status == 'published' || isAdmin());
+      allow list: if existing().status == 'published' || isAdmin();
+
+      allow create: if isValidId(announcementId)
+        && isValidAnnouncement(incoming(), announcementId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(announcementId)
+        && isValidAnnouncement(incoming(), announcementId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(announcementId) && isAdmin();
+    }
+
+    match /media_assets/{assetId} {
+      allow get: if isValidId(assetId);
+      allow list: if true;
+
+      allow create: if isValidId(assetId)
+        && isValidMediaAsset(incoming(), assetId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(assetId)
+        && isValidMediaAsset(incoming(), assetId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(assetId) && isAdmin();
+    }
+
+    // =========================================================================
+    // Permanent Match Centre Delta & Simulation Collections
+    // =========================================================================
+    match /custom_teams/{teamId} {
+      allow get: if isValidId(teamId);
+      allow list: if true;
+
+      allow create: if isValidId(teamId)
+        && isValidTeamDoc(incoming(), teamId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(teamId)
+        && isValidTeamDoc(incoming(), teamId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'team_type', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(teamId) && isAdmin();
+    }
+
+    match /team_overrides/{teamId} {
+      allow get: if isValidId(teamId);
+      allow list: if true;
+
+      allow create: if isValidId(teamId)
+        && isValidTeamDoc(incoming(), teamId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(teamId)
+        && isValidTeamDoc(incoming(), teamId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'team_type', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(teamId) && isAdmin();
+    }
+
+    match /player_identities/{playerId} {
+      allow get: if isValidId(playerId);
+      allow list: if true;
+
+      allow create: if isValidId(playerId)
+        && isValidPlayerIdentity(incoming(), playerId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(playerId)
+        && isValidPlayerIdentity(incoming(), playerId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(playerId) && isAdmin();
+    }
+
+    match /player_registrations/{regId} {
+      allow get: if isValidId(regId);
+      allow list: if true;
+
+      allow create: if isValidId(regId)
+        && isValidPlayerRegistration(incoming(), regId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(regId)
+        && isValidPlayerRegistration(incoming(), regId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['team_type', 'playerId', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(regId) && isAdmin();
+    }
+
+    match /free_agents/{agentId} {
+      allow get: if isValidId(agentId);
+      allow list: if true;
+
+      allow create: if isValidId(agentId)
+        && isValidFreeAgent(incoming(), agentId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(agentId)
+        && isValidFreeAgent(incoming(), agentId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(agentId) && isAdmin();
+    }
+
+    match /manager_records/{managerId} {
+      allow get: if isValidId(managerId);
+      allow list: if true;
+
+      allow create: if isValidId(managerId)
+        && isValidManagerDoc(incoming(), managerId)
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (isVerifiedUser() && incoming().verified == false && incoming().updatedBy == request.auth.uid)
+        );
+
+      allow update: if isValidId(managerId)
+        && isValidManagerDoc(incoming(), managerId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'verified', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(managerId) && isAdmin();
+    }
+
+    match /manager_appointments/{appointmentId} {
+      allow get: if isValidId(appointmentId);
+      allow list: if true;
+
+      allow create: if isValidId(appointmentId)
+        && isValidManagerAppointment(incoming(), appointmentId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(appointmentId)
+        && isValidManagerAppointment(incoming(), appointmentId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['manager_id', 'team_id', 'is_current', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(appointmentId) && isAdmin();
+    }
+
+    match /competitions/{competitionId} {
+      allow get: if isValidId(competitionId) && (existing().status == 'published' || isAdmin());
+      allow list: if existing().status == 'published' || isAdmin();
+
+      allow create: if isValidId(competitionId)
+        && isValidCompetitionDoc(incoming(), competitionId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(competitionId)
+        && isValidCompetitionDoc(incoming(), competitionId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(competitionId) && isAdmin();
+    }
+
+    match /competition_maker/{competitionId} {
+      allow get: if isValidId(competitionId);
+      allow list: if true;
+
+      allow create: if isValidId(competitionId)
+        && isValidCompetitionMakerDoc(incoming(), competitionId)
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            isVerifiedUser()
+            && incoming().createdBy == request.auth.uid
+            && incoming().updatedBy == request.auth.uid
+          )
+        );
+
+      allow update: if isValidId(competitionId)
+        && isValidCompetitionMakerDoc(incoming(), competitionId)
+        && incoming().id == existing().id
+        && incoming().createdBy == existing().createdBy
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'presetId', 'payload', 'updatedBy', 'updatedAt'])
+        && (
+          isAdmin()
+          || (
+            isVerifiedUser()
+            && existing().createdBy == request.auth.uid
+            && incoming().updatedBy == request.auth.uid
+          )
+        );
+
+      allow delete: if isValidId(competitionId)
+        && (
+          isAdmin()
+          || (isVerifiedUser() && existing().createdBy == request.auth.uid)
+        );
+    }
+
+    match /league_statuses/{leagueId} {
+      allow get: if isValidId(leagueId);
+      allow list: if true;
+
+      allow create: if isValidId(leagueId)
+        && isValidLeagueStatusDoc(incoming(), leagueId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(leagueId)
+        && isValidLeagueStatusDoc(incoming(), leagueId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['stage', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(leagueId) && isAdmin();
+    }
+
+    match /simulation_matches/{matchId} {
+      allow get: if isValidId(matchId);
+      allow list: if true;
+
+      allow create: if isValidId(matchId)
+        && isValidMatchRecord(incoming(), matchId)
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (isVerifiedUser() && incoming().createdBy == request.auth.uid)
+        );
+
+      allow update: if isValidId(matchId)
+        && isValidMatchRecord(incoming(), matchId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['createdBy', 'payload', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(matchId) && isAdmin();
+    }
+
+    match /scoreboard_matches/{matchId} {
+      allow get: if isValidId(matchId);
+      allow list: if true;
+
+      allow create: if isValidId(matchId)
+        && isValidMatchRecord(incoming(), matchId)
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (isVerifiedUser() && incoming().createdBy == request.auth.uid)
+        );
+
+      allow update: if isValidId(matchId)
+        && isValidMatchRecord(incoming(), matchId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['createdBy', 'payload', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(matchId) && isAdmin();
+    }
+
+    match /quiz_questions/{questionId} {
+      allow get: if isValidId(questionId);
+      allow list: if true;
+
+      allow create: if isValidId(questionId)
+        && isValidQuizQuestion(incoming(), questionId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(questionId)
+        && isValidQuizQuestion(incoming(), questionId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(questionId) && isAdmin();
+    }
+
+    match /reader_objectives/{objectiveId} {
+      allow get: if isValidId(objectiveId);
+      allow list: if true;
+
+      allow create: if isValidId(objectiveId)
+        && isValidReaderObjective(incoming(), objectiveId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if isValidId(objectiveId)
+        && isValidReaderObjective(incoming(), objectiveId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['active', 'payload', 'updatedBy', 'updatedAt'])
+        && isAdmin();
+
+      allow delete: if isValidId(objectiveId) && isAdmin();
+    }
+
+    match /newsletter_subscribers/{subId} {
+      allow get: if isValidId(subId) && isAdmin();
+      allow list: if isAdmin();
+
+      allow create: if isValidId(subId)
+        && isValidNewsletterSubscriber(incoming(), subId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if false;
+
+      allow delete: if isValidId(subId) && isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow get: if isValidId(logId) && isAdmin();
+      allow list: if isAdmin();
+
+      allow create: if isValidId(logId)
+        && isValidAuditLog(incoming(), logId)
+        && incoming().updatedAt == request.time
+        && isAdmin();
+
+      allow update: if false;
+
+      allow delete: if isValidId(logId) && isAdmin();
+    }
+  }
+}
